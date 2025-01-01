@@ -1,0 +1,41 @@
+{
+	"schemaVersion": 1,
+	"id": "tpa-utilities",
+	"version": "${version}",
+	"name": "TPA Utilities",
+	"description": "A simple mod that adds TPA commands",
+	"authors": [
+		"MimStar"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "LGPL-3.0-only",
+	"icon": "assets/tpa-utilities/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.tpautilities.TPAUtilities"
+		],
+		"client": [
+			"com.tpautilities.TPAUtilitiesClient"
+		]
+	},
+	"mixins": [
+		"tpa-utilities.mixins.json",
+		{
+			"config": "tpa-utilities.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.16.9",
+		"minecraft": "~1.21.4",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}
