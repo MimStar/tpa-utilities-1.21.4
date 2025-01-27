@@ -1,29 +1,23 @@
 package com.tpautilities;
 
+import com.google.gson.JsonObject;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.fabricmc.api.ModInitializer;
 
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.command.argument.EntityArgumentType;
-import net.minecraft.network.packet.s2c.play.PositionFlag;
-import net.minecraft.particle.ParticleEffect;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.command.TeleportCommand;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.world.TeleportTarget;
-import net.minecraft.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,11 +33,25 @@ public class TPAUtilities implements ModInitializer {
 	private static final ConcurrentHashMap<UUID, Queue<UUID>> playerTPAHEREMap = new ConcurrentHashMap<>();
 	private static final List<ScheduledExecutorService> schedulers = new ArrayList<>();
 	private static final List<UUID> lockedTPAPlayers = new ArrayList<>();
+	private static JsonObject translations = new JsonObject();
 
 	// This logger is used to write text to the console and the log file.
 	// It is considered best practice to use your mod id as the logger's name.
 	// That way, it's clear which mod wrote info, warnings, and errors.
 	private static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+
+	public static String getMOD_ID(){
+		return MOD_ID;
+	}
+
+	public static Set<String> listTranslations(){
+		return translations.keySet();
+	}
+
+	public static String getTranslation(String language, String sentence){
+		if (!translations.has(language)) return "(Error : there is a problem in the tpa_translations.json, please delete the file and restart the server or correct your translation)";
+		return translations.get(language).getAsJsonObject().get(sentence).getAsString();
+	}
 
 	@Override
 	public void onInitialize() {
@@ -76,11 +84,20 @@ public class TPAUtilities implements ModInitializer {
 			dispatcher.register(CommandManager.literal("tpalock")
 					.executes(this::tpalockExecute));
 		});
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+			dispatcher.register(CommandManager.literal("tpalanguage")
+					.then(CommandManager.argument("language", StringArgumentType.string())
+							.suggests(new LanguageSuggestionProvider())
+								.executes(this::tpalanguageExecute)));
+		});
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
 			for(ScheduledExecutorService scheduler : schedulers){
 				LOGGER.info("TPA Utilities is shutting down a scheduler, please wait...");
 				scheduler.shutdownNow();
 			}
+		});
+		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+			translations = JsonHandler.loadTranslations(server);
 		});
 		LOGGER.info("TPA Utilities has been loaded successfully!");
 	}
@@ -90,17 +107,19 @@ public class TPAUtilities implements ModInitializer {
 			UUID player_uuid = Objects.requireNonNull(context.getSource().getPlayer()).getUuid();
 			String player_name = context.getSource().getPlayer().getName().getString();
 			UUID target_uuid = EntityArgumentType.getPlayer(context, "player").getUuid();
+			String player_language = StateSaverAndLoader.getPlayerState(context.getSource().getPlayer()).getLanguage();
+			String target_language = StateSaverAndLoader.getPlayerState(EntityArgumentType.getPlayer(context, "player")).getLanguage();
 			if (context.getSource().getPlayer().getUuid() == target_uuid){
-				context.getSource().sendFeedback(() -> Text.literal("Error : You can't tpa to yourself.").formatted(Formatting.RED), false);
+				context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"error_tpa_yourself")).formatted(Formatting.RED), false);
 				return 1;
 			}
 			if (lockedTPAPlayers.contains(target_uuid)){
-				context.getSource().sendFeedback(() -> Text.literal("This player has disabled tpa.").formatted(Formatting.RED), false);
+				context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"error_tpa_disabled")).formatted(Formatting.RED), false);
 				return 1;
 			}
 			if (playerTPAMap.containsKey(target_uuid)){
 				if (playerTPAMap.get(target_uuid).contains(player_uuid)){
-					context.getSource().sendFeedback(() -> Text.literal("Error : You've already asked to tpa to this player.").formatted(Formatting.RED), false);
+					context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"error_tpa_already_asked")).formatted(Formatting.RED), false);
 					return 1;
 				}
 				playerTPAMap.get(target_uuid).add(player_uuid);
@@ -112,9 +131,9 @@ public class TPAUtilities implements ModInitializer {
 			}
 			ServerPlayerEntity player_target = context.getSource().getServer().getPlayerManager().getPlayer(target_uuid);
             assert player_target != null;
-            player_target.sendMessage(Text.literal(String.format("%s wants to teleport to you! Accept with /tpaccept or click here!", player_name)).formatted(Formatting.GOLD).styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tpaccept"))));
+            player_target.sendMessage(Text.literal(String.format(getTranslation(target_language,"wants_tpa_teleport"), player_name)).formatted(Formatting.GOLD).styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tpaccept"))));
 			player_target.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_BREAK, SoundCategory.MASTER, 1.0f, 1.0f);
-			context.getSource().sendFeedback(() -> Text.literal("Your tpa request has been sent!").formatted(Formatting.GREEN), false);
+			context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpa_sent")).formatted(Formatting.GREEN), false);
 			ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 			schedulers.add(scheduler);
 			scheduler.schedule(() -> {
@@ -124,7 +143,7 @@ public class TPAUtilities implements ModInitializer {
 						if (playerTPAMap.get(target_uuid).isEmpty()){
 							playerTPAMap.remove(target_uuid);
 						}
-						context.getSource().sendFeedback(() -> Text.literal("Your tpa request has expired.").formatted(Formatting.RED), false);
+						context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpa_expired")).formatted(Formatting.RED), false);
 					}
 				}
 				schedulers.remove(scheduler);
@@ -142,17 +161,19 @@ public class TPAUtilities implements ModInitializer {
 			UUID player_uuid = Objects.requireNonNull(context.getSource().getPlayer()).getUuid();
 			String player_name = context.getSource().getPlayer().getName().getString();
 			UUID target_uuid = EntityArgumentType.getPlayer(context, "player").getUuid();
+			String player_language = StateSaverAndLoader.getPlayerState(context.getSource().getPlayer()).getLanguage();
+			String target_language = StateSaverAndLoader.getPlayerState(EntityArgumentType.getPlayer(context, "player")).getLanguage();
 			if (context.getSource().getPlayer().getUuid() == target_uuid){
-				context.getSource().sendFeedback(() -> Text.literal("Error : You can't tpahere to yourself.").formatted(Formatting.RED), false);
+				context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"error_tpahere_yourself")).formatted(Formatting.RED), false);
 				return 1;
 			}
 			if (lockedTPAPlayers.contains(target_uuid)){
-				context.getSource().sendFeedback(() -> Text.literal("This player has disabled tpahere.").formatted(Formatting.RED), false);
+				context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"error_tpahere_disabled")).formatted(Formatting.RED), false);
 				return 1;
 			}
 			if (playerTPAHEREMap.containsKey(target_uuid)){
 				if (playerTPAHEREMap.get(target_uuid).contains(player_uuid)){
-					context.getSource().sendFeedback(() -> Text.literal("Error : You've already asked to tpahere to this player.").formatted(Formatting.RED), false);
+					context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"error_tpahere_already_asked")).formatted(Formatting.RED), false);
 					return 1;
 				}
 				playerTPAHEREMap.get(target_uuid).add(player_uuid);
@@ -164,9 +185,9 @@ public class TPAUtilities implements ModInitializer {
 			}
 			ServerPlayerEntity player_target = context.getSource().getServer().getPlayerManager().getPlayer(target_uuid);
 			assert player_target != null;
-			player_target.sendMessage(Text.literal(String.format("%s wants you to teleport to him! Accept with /tpaccept or click here!", player_name)).formatted(Formatting.GOLD).styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tpaccept"))));
+			player_target.sendMessage(Text.literal(String.format(getTranslation(target_language,"wants_tpahere_teleport"), player_name)).formatted(Formatting.GOLD).styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tpaccept"))));
 			player_target.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_RESONATE, SoundCategory.MASTER, 1.0f, 1.0f);
-			context.getSource().sendFeedback(() -> Text.literal("Your tpahere request has been sent!").formatted(Formatting.GREEN), false);
+			context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpa_here_sent")).formatted(Formatting.GREEN), false);
 			ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 			schedulers.add(scheduler);
 			scheduler.schedule(() -> {
@@ -176,7 +197,7 @@ public class TPAUtilities implements ModInitializer {
 						if (playerTPAHEREMap.get(target_uuid).isEmpty()){
 							playerTPAHEREMap.remove(target_uuid);
 						}
-						context.getSource().sendFeedback(() -> Text.literal("Your tpahere request has expired.").formatted(Formatting.RED), false);
+						context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpahere_expired")).formatted(Formatting.RED), false);
 						context.getSource().getPlayer().playSoundToPlayer(SoundEvents.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
 					}
 				}
@@ -193,6 +214,7 @@ public class TPAUtilities implements ModInitializer {
 	private int tpacceptExecute(CommandContext<ServerCommandSource> context){
 		if (context.getSource().isExecutedByPlayer()){
 			ServerPlayerEntity player = Objects.requireNonNull(context.getSource().getPlayer());
+			String player_language = StateSaverAndLoader.getPlayerState(player).getLanguage();
 			if (playerTPAMap.containsKey(player.getUuid())){
 				UUID target_uuid = playerTPAMap.get(player.getUuid()).poll();
 				ServerPlayerEntity target_player = Objects.requireNonNull(context.getSource().getServer().getPlayerManager().getPlayer(target_uuid));
@@ -201,7 +223,7 @@ public class TPAUtilities implements ModInitializer {
 				if (playerTPAMap.get(player.getUuid()).isEmpty()){
 					playerTPAMap.remove(player.getUuid());
 				}
-				target_player.sendMessage(Text.literal("You have been successfully teleported!").formatted(Formatting.GREEN));
+				target_player.sendMessage(Text.literal(getTranslation(player_language,"teleport_success")).formatted(Formatting.GREEN));
 				target_player.playSoundToPlayer(SoundEvents.ENTITY_ENDER_EYE_DEATH, SoundCategory.MASTER, 1.0f, 1.0f);
 			}
 			else if (playerTPAHEREMap.containsKey(player.getUuid())){
@@ -212,11 +234,11 @@ public class TPAUtilities implements ModInitializer {
 				if (playerTPAHEREMap.get(player.getUuid()).isEmpty()){
 					playerTPAHEREMap.remove(player.getUuid());
 				}
-				player.sendMessage(Text.literal("You have been successfully teleported!").formatted(Formatting.GREEN));
+				player.sendMessage(Text.literal(getTranslation(player_language,"teleport_success")).formatted(Formatting.GREEN));
 				player.playSoundToPlayer(SoundEvents.ENTITY_ENDER_EYE_DEATH, SoundCategory.MASTER, 1.0f, 1.0f);
 			}
 			else{
-				context.getSource().sendFeedback(() -> Text.literal("Error : There is no tpa to accept.").formatted(Formatting.RED), false);
+				context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"error_tpaccept")).formatted(Formatting.RED), false);
 			}
 		}
 		else{
@@ -228,26 +250,29 @@ public class TPAUtilities implements ModInitializer {
 	private int tpadenyExecute(CommandContext<ServerCommandSource> context) {
 		if (context.getSource().isExecutedByPlayer()){
 			ServerPlayerEntity player = Objects.requireNonNull(context.getSource().getPlayer());
+			String player_language = StateSaverAndLoader.getPlayerState(player).getLanguage();
 			if (playerTPAMap.containsKey(player.getUuid())){
 				UUID target_uuid = playerTPAMap.get(player.getUuid()).poll();
 				ServerPlayerEntity target_player = Objects.requireNonNull(context.getSource().getServer().getPlayerManager().getPlayer(target_uuid));
+				String target_language = StateSaverAndLoader.getPlayerState(target_player).getLanguage();
 				if (playerTPAMap.get(player.getUuid()).isEmpty()){
 					playerTPAMap.remove(player.getUuid());
 				}
-				target_player.sendMessage(Text.literal("Your tpa request has been refused.").formatted(Formatting.RED));
+				target_player.sendMessage(Text.literal(getTranslation(target_language,"tpa_refused")).formatted(Formatting.RED));
 				target_player.playSoundToPlayer(SoundEvents.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
 			}
 			else if (playerTPAHEREMap.containsKey(player.getUuid())){
 				UUID target_uuid = playerTPAHEREMap.get(player.getUuid()).poll();
 				ServerPlayerEntity target_player = Objects.requireNonNull(context.getSource().getServer().getPlayerManager().getPlayer(target_uuid));
+				String target_language = StateSaverAndLoader.getPlayerState(target_player).getLanguage();
 				if (playerTPAHEREMap.get(player.getUuid()).isEmpty()){
 					playerTPAHEREMap.remove(player.getUuid());
 				}
-				target_player.sendMessage(Text.literal("Your tpahere request has been refused.").formatted(Formatting.RED));
+				target_player.sendMessage(Text.literal(getTranslation(target_language,"tpahere_refused")).formatted(Formatting.RED));
 				target_player.playSoundToPlayer(SoundEvents.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
 			}
 			else{
-				context.getSource().sendFeedback(() -> Text.literal("Error : There is no tpa to deny.").formatted(Formatting.RED), false);
+				context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"error_tpadeny")).formatted(Formatting.RED), false);
 			}
 		}
 		else{
@@ -258,6 +283,7 @@ public class TPAUtilities implements ModInitializer {
 
 	private int tpacancelExecute(CommandContext<ServerCommandSource> context){
 		UUID player_uuid = Objects.requireNonNull(context.getSource().getPlayer()).getUuid();
+		String player_language = StateSaverAndLoader.getPlayerState(context.getSource().getPlayer()).getLanguage();
 		List<UUID> keysTPA = Collections.list(playerTPAMap.keys());
 		List<UUID> keysTPAHERE = Collections.list(playerTPAHEREMap.keys());
 		for (UUID target_uuid : keysTPA){
@@ -272,19 +298,36 @@ public class TPAUtilities implements ModInitializer {
 				playerTPAHEREMap.remove(target_uuid);
 			}
 		}
-		context.getSource().sendFeedback(() -> Text.literal("All of your tpa and tpahere requests have been cancelled!").formatted(Formatting.GREEN), false);
+		context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpacancel_success")).formatted(Formatting.GREEN), false);
 		return 1;
 	}
 
 	private int tpalockExecute(CommandContext<ServerCommandSource> context){
 		UUID player_uuid = Objects.requireNonNull(context.getSource().getPlayer()).getUuid();
+		String player_language = StateSaverAndLoader.getPlayerState(context.getSource().getPlayer()).getLanguage();
 		if (lockedTPAPlayers.contains(player_uuid)){
 			lockedTPAPlayers.remove(player_uuid);
-			context.getSource().sendFeedback(() -> Text.literal("TPA lock deactivated!").formatted(Formatting.GREEN), false);
+			context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpalock_activated")).formatted(Formatting.GREEN), false);
 		}
 		else{
 			lockedTPAPlayers.add(player_uuid);
-			context.getSource().sendFeedback(() -> Text.literal("TPA lock activated!").formatted(Formatting.GREEN), false);
+			context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpalock_deactivated")).formatted(Formatting.GREEN), false);
+		}
+		return 1;
+	}
+
+	private int tpalanguageExecute(CommandContext<ServerCommandSource> context){
+		PlayerData playerData = StateSaverAndLoader.getPlayerState(Objects.requireNonNull(context.getSource().getPlayer()));
+		String new_language = StringArgumentType.getString(context,"language");
+		if (translations.has(new_language)){
+			playerData.setLanguage(new_language);
+			StateSaverAndLoader.saveState(Objects.requireNonNull(context.getSource().getServer()));
+			context.getSource().sendFeedback(() -> Text.literal(getTranslation(playerData.getLanguage(),"tpalanguage_success")).formatted(Formatting.GREEN), false);
+			context.getSource().getPlayer().playSoundToPlayer(SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.0f);
+		}
+		else{
+			context.getSource().sendFeedback(() -> Text.literal(getTranslation(playerData.getLanguage(),"tpalanguage_invalid")).formatted(Formatting.RED), false);
+			context.getSource().getPlayer().playSoundToPlayer(SoundEvents.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
 		}
 		return 1;
 	}
