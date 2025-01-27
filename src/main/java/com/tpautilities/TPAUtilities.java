@@ -218,12 +218,13 @@ public class TPAUtilities implements ModInitializer {
 			if (playerTPAMap.containsKey(player.getUuid())){
 				UUID target_uuid = playerTPAMap.get(player.getUuid()).poll();
 				ServerPlayerEntity target_player = Objects.requireNonNull(context.getSource().getServer().getPlayerManager().getPlayer(target_uuid));
+				String target_language = StateSaverAndLoader.getPlayerState(target_player).getLanguage();
 				TeleportTarget teleport_target = new TeleportTarget(player.getServerWorld(),player.getPos(),target_player.getVelocity(),target_player.getYaw(),target_player.getPitch(), TeleportTarget.ADD_PORTAL_CHUNK_TICKET);
 				target_player.teleportTo(teleport_target);
 				if (playerTPAMap.get(player.getUuid()).isEmpty()){
 					playerTPAMap.remove(player.getUuid());
 				}
-				target_player.sendMessage(Text.literal(getTranslation(player_language,"teleport_success")).formatted(Formatting.GREEN));
+				target_player.sendMessage(Text.literal(getTranslation(target_language,"teleport_success")).formatted(Formatting.GREEN));
 				target_player.playSoundToPlayer(SoundEvents.ENTITY_ENDER_EYE_DEATH, SoundCategory.MASTER, 1.0f, 1.0f);
 			}
 			else if (playerTPAHEREMap.containsKey(player.getUuid())){
