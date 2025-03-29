@@ -1,21 +1,34 @@
 package com.tpautilities;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.PersistentState;
 import net.minecraft.world.PersistentStateManager;
+import net.minecraft.world.PersistentStateType;
 import net.minecraft.world.World;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
 public class StateSaverAndLoader extends PersistentState {
 
-    public HashMap<UUID,PlayerData> players = new HashMap<>();
+    public HashMap<UUID,PlayerData> players;
 
+    public StateSaverAndLoader(){
+        this.players = new HashMap<>();
+    }
+
+    public StateSaverAndLoader(Map<UUID, PlayerData> players) {
+        this.players = new HashMap<>(players);
+    }
+
+    /*
     @Override
     public NbtCompound writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup wrapperLookup){
         NbtCompound playersNbt = new NbtCompound();
@@ -40,17 +53,24 @@ public class StateSaverAndLoader extends PersistentState {
         });
         return state;
     }
+    */
 
-    private static final Type<StateSaverAndLoader> type = new Type<>(
+    public static final Codec<StateSaverAndLoader> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Codec.unboundedMap(Codec.STRING.xmap(UUID::fromString, UUID::toString),
+                    PlayerData.CODEC).fieldOf("players").forGetter(state -> state.players)
+    ).apply(instance, StateSaverAndLoader::new));
+
+    private static final PersistentStateType<StateSaverAndLoader> type = new PersistentStateType<>(
+            TPAUtilities.getMOD_ID(),
             StateSaverAndLoader::new,
-            StateSaverAndLoader::createFromNbt,
+            CODEC,
             null
     );
 
     public static StateSaverAndLoader getServerState(MinecraftServer server){
         PersistentStateManager persistentStateManager = Objects.requireNonNull(server.getWorld(World.OVERWORLD)).getPersistentStateManager();
 
-        StateSaverAndLoader state = persistentStateManager.getOrCreate(type, TPAUtilities.getMOD_ID());
+        StateSaverAndLoader state = persistentStateManager.getOrCreate(type);
 
         state.markDirty();
 

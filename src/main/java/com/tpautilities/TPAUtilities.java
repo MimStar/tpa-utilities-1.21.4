@@ -131,7 +131,7 @@ public class TPAUtilities implements ModInitializer {
 			}
 			ServerPlayerEntity player_target = context.getSource().getServer().getPlayerManager().getPlayer(target_uuid);
             assert player_target != null;
-            player_target.sendMessage(Text.literal(String.format(getTranslation(target_language,"wants_tpa_teleport"), player_name)).formatted(Formatting.GOLD).styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tpaccept"))));
+            player_target.sendMessage(Text.literal(String.format(getTranslation(target_language,"wants_tpa_teleport"), player_name)).formatted(Formatting.GOLD).styled(style -> style.withClickEvent(new ClickEvent.RunCommand("/tpaccept"))));
 			player_target.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_BREAK, SoundCategory.MASTER, 1.0f, 1.0f);
 			context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpa_sent")).formatted(Formatting.GREEN), false);
 			ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -185,7 +185,7 @@ public class TPAUtilities implements ModInitializer {
 			}
 			ServerPlayerEntity player_target = context.getSource().getServer().getPlayerManager().getPlayer(target_uuid);
 			assert player_target != null;
-			player_target.sendMessage(Text.literal(String.format(getTranslation(target_language,"wants_tpahere_teleport"), player_name)).formatted(Formatting.GOLD).styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tpaccept"))));
+			player_target.sendMessage(Text.literal(String.format(getTranslation(target_language,"wants_tpahere_teleport"), player_name)).formatted(Formatting.GOLD).styled(style -> style.withClickEvent(new ClickEvent.RunCommand("/tpaccept"))));
 			player_target.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_RESONATE, SoundCategory.MASTER, 1.0f, 1.0f);
 			context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpa_here_sent")).formatted(Formatting.GREEN), false);
 			ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
