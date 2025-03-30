@@ -327,7 +327,7 @@ public class TPAUtilities implements ModInitializer {
 			context.getSource().getPlayer().playSoundToPlayer(SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.0f);
 		}
 		else{
-			context.getSource().sendFeedback(() -> Text.literal(getTranslation(playerData.getLanguage(),"tpalanguage_invalid")).formatted(Formatting.RED), false);
+			context.getSource().sendFeedback(() -> Text.literal(getTranslation(playerData.getLanguage(),"tpalanguage_failure")).formatted(Formatting.RED), false);
 			context.getSource().getPlayer().playSoundToPlayer(SoundEvents.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
 		}
 		return 1;
