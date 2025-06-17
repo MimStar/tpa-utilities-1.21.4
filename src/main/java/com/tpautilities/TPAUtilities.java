@@ -219,7 +219,7 @@ public class TPAUtilities implements ModInitializer {
 				UUID target_uuid = playerTPAMap.get(player.getUuid()).poll();
 				ServerPlayerEntity target_player = Objects.requireNonNull(context.getSource().getServer().getPlayerManager().getPlayer(target_uuid));
 				String target_language = StateSaverAndLoader.getPlayerState(target_player).getLanguage();
-				TeleportTarget teleport_target = new TeleportTarget(player.getServerWorld(),player.getPos(),target_player.getVelocity(),target_player.getYaw(),target_player.getPitch(), TeleportTarget.ADD_PORTAL_CHUNK_TICKET);
+				TeleportTarget teleport_target = new TeleportTarget(player.getWorld(),player.getPos(),target_player.getVelocity(),target_player.getYaw(),target_player.getPitch(), TeleportTarget.ADD_PORTAL_CHUNK_TICKET);
 				target_player.teleportTo(teleport_target);
 				if (playerTPAMap.get(player.getUuid()).isEmpty()){
 					playerTPAMap.remove(player.getUuid());
@@ -230,7 +230,7 @@ public class TPAUtilities implements ModInitializer {
 			else if (playerTPAHEREMap.containsKey(player.getUuid())){
 				UUID target_uuid = playerTPAHEREMap.get(player.getUuid()).poll();
 				ServerPlayerEntity target_player = Objects.requireNonNull(context.getSource().getServer().getPlayerManager().getPlayer(target_uuid));
-				TeleportTarget teleport_target = new TeleportTarget(target_player.getServerWorld(), target_player.getPos(),player.getVelocity(),player.getYaw(),player.getPitch(),TeleportTarget.ADD_PORTAL_CHUNK_TICKET);
+				TeleportTarget teleport_target = new TeleportTarget(target_player.getWorld(), target_player.getPos(),player.getVelocity(),player.getYaw(),player.getPitch(),TeleportTarget.ADD_PORTAL_CHUNK_TICKET);
 				player.teleportTo(teleport_target);
 				if (playerTPAHEREMap.get(player.getUuid()).isEmpty()){
 					playerTPAHEREMap.remove(player.getUuid());
