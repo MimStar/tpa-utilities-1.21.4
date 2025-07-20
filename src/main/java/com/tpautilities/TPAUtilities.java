@@ -84,6 +84,7 @@ public class TPAUtilities implements ModInitializer {
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 			dispatcher.register(CommandManager.literal("tpadeny")
 					.then(CommandManager.argument("player", EntityArgumentType.player())
+							.suggests(new PlayerSuggestionProvider())
 							.executes(this::tpadenyExecute)));
 		});
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
@@ -145,7 +146,7 @@ public class TPAUtilities implements ModInitializer {
 			}
 			ServerPlayerEntity player_target = context.getSource().getServer().getPlayerManager().getPlayer(target_uuid);
 			assert player_target != null;
-			player_target.sendMessage(Text.literal(String.format(getTranslation(target_language,"wants_tpa_teleport"), player_name)).formatted(Formatting.GOLD).styled(style -> style.withClickEvent(new ClickEvent.RunCommand("/tpaccept"))));
+			player_target.sendMessage(Text.literal(String.format(getTranslation(target_language,"wants_tpa_teleport"), player_name)).formatted(Formatting.GOLD).styled(style -> style.withClickEvent(new ClickEvent.RunCommand("/tpaccept" + player_name))));
 			player_target.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_BREAK, SoundCategory.MASTER, 1.0f, 1.0f);
 			context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpa_sent")).formatted(Formatting.GREEN), false);
 			ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -203,7 +204,7 @@ public class TPAUtilities implements ModInitializer {
 			}
 			ServerPlayerEntity player_target = context.getSource().getServer().getPlayerManager().getPlayer(target_uuid);
 			assert player_target != null;
-			player_target.sendMessage(Text.literal(String.format(getTranslation(target_language,"wants_tpahere_teleport"), player_name)).formatted(Formatting.GOLD).styled(style -> style.withClickEvent(new ClickEvent.RunCommand("/tpaccept"))));
+			player_target.sendMessage(Text.literal(String.format(getTranslation(target_language,"wants_tpahere_teleport"), player_name)).formatted(Formatting.GOLD).styled(style -> style.withClickEvent(new ClickEvent.RunCommand("/tpaccept " + player_name))));
 			player_target.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_RESONATE, SoundCategory.MASTER, 1.0f, 1.0f);
 			context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpa_here_sent")).formatted(Formatting.GREEN), false);
 			ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -235,6 +236,10 @@ public class TPAUtilities implements ModInitializer {
 			String player_language = StateSaverAndLoader.getPlayerState(player).getLanguage();
 			UUID player_uuid = EntityArgumentType.getPlayer(context, "player").getUuid();
 			if (playerTPAMap.containsKey(player.getUuid())){
+				if (!playerTPAMap.get(player.getUuid()).contains(player_uuid)){
+					context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"error_tpaccept")).formatted(Formatting.RED), false);
+					return 1;
+				}
 				UUID target_uuid = playerTPAMap.get(player.getUuid()).remove(playerTPAMap.get(player.getUuid()).indexOf(player_uuid));
 				ServerPlayerEntity target_player = Objects.requireNonNull(context.getSource().getServer().getPlayerManager().getPlayer(target_uuid));
 				String target_language = StateSaverAndLoader.getPlayerState(target_player).getLanguage();
@@ -247,6 +252,10 @@ public class TPAUtilities implements ModInitializer {
 				target_player.playSoundToPlayer(SoundEvents.ENTITY_ENDER_EYE_DEATH, SoundCategory.MASTER, 1.0f, 1.0f);
 			}
 			else if (playerTPAHEREMap.containsKey(player.getUuid())){
+				if (!playerTPAHEREMap.get(player.getUuid()).contains(player_uuid)){
+					context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"error_tpaccept")).formatted(Formatting.RED), false);
+					return 1;
+				}
 				UUID target_uuid = playerTPAHEREMap.get(player.getUuid()).remove(playerTPAHEREMap.get(player.getUuid()).indexOf(player_uuid));
 				ServerPlayerEntity target_player = Objects.requireNonNull(context.getSource().getServer().getPlayerManager().getPlayer(target_uuid));
 				TeleportTarget teleport_target = new TeleportTarget(target_player.getWorld(), target_player.getPos(),player.getVelocity(),player.getYaw(),player.getPitch(),TeleportTarget.ADD_PORTAL_CHUNK_TICKET);
@@ -273,6 +282,10 @@ public class TPAUtilities implements ModInitializer {
 			String player_language = StateSaverAndLoader.getPlayerState(player).getLanguage();
 			UUID player_uuid = EntityArgumentType.getPlayer(context, "player").getUuid();
 			if (playerTPAMap.containsKey(player.getUuid())){
+				if (!playerTPAMap.get(player.getUuid()).contains(player_uuid)){
+					context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"error_tpadeny")).formatted(Formatting.RED), false);
+					return 1;
+				}
 				UUID target_uuid = playerTPAMap.get(player.getUuid()).remove(playerTPAMap.get(player.getUuid()).indexOf(player_uuid));
 				ServerPlayerEntity target_player = Objects.requireNonNull(context.getSource().getServer().getPlayerManager().getPlayer(target_uuid));
 				String target_language = StateSaverAndLoader.getPlayerState(target_player).getLanguage();
@@ -283,6 +296,10 @@ public class TPAUtilities implements ModInitializer {
 				target_player.playSoundToPlayer(SoundEvents.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
 			}
 			else if (playerTPAHEREMap.containsKey(player.getUuid())){
+				if (!playerTPAHEREMap.get(player.getUuid()).contains(player_uuid)){
+					context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"error_tpadeny")).formatted(Formatting.RED), false);
+					return 1;
+				}
 				UUID target_uuid = playerTPAHEREMap.get(player.getUuid()).remove(playerTPAHEREMap.get(player.getUuid()).indexOf(player_uuid));
 				ServerPlayerEntity target_player = Objects.requireNonNull(context.getSource().getServer().getPlayerManager().getPlayer(target_uuid));
 				String target_language = StateSaverAndLoader.getPlayerState(target_player).getLanguage();
