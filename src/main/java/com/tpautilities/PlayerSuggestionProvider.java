@@ -23,7 +23,7 @@ public class PlayerSuggestionProvider implements com.mojang.brigadier.suggestion
         if (playerTPAList != null){
             for (UUID player_uuid : playerTPAList){
                 String player_name = Objects.requireNonNull(context.getSource().getServer().getPlayerManager().getPlayer(player_uuid)).getName().getString();
-                if (player_name.startsWith(input) && !alreadyAdded.contains(player_uuid)) {
+                if (player_name.toLowerCase().startsWith(input) && !alreadyAdded.contains(player_uuid)) {
                     alreadyAdded.add(player_uuid);
                     builder.suggest(player_name);
                 }
@@ -33,7 +33,7 @@ public class PlayerSuggestionProvider implements com.mojang.brigadier.suggestion
         if (playerTPAHEREList != null){
             for (UUID player_uuid : playerTPAHEREList){
                 String player_name = Objects.requireNonNull(context.getSource().getServer().getPlayerManager().getPlayer(player_uuid)).getName().getString();
-                if (player_name.startsWith(input) && !alreadyAdded.contains(player_uuid)) {
+                if (player_name.toLowerCase().startsWith(input) && !alreadyAdded.contains(player_uuid)) {
                     alreadyAdded.add(player_uuid);
                     builder.suggest(player_name);
                 }
