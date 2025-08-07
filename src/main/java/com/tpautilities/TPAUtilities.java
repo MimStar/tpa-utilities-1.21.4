@@ -147,7 +147,7 @@ public class TPAUtilities implements ModInitializer {
 			ServerPlayerEntity player_target = context.getSource().getServer().getPlayerManager().getPlayer(target_uuid);
 			assert player_target != null;
 			player_target.sendMessage(Text.literal(String.format(getTranslation(target_language,"wants_tpa_teleport"), player_name)).formatted(Formatting.GOLD).styled(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tpaccept " + player_name))));
-			player_target.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_BREAK, SoundCategory.MASTER, 1.0f, 1.0f);
+			player_target.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_RESONATE, SoundCategory.MASTER, 1.0f, 1.0f);
 			context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpa_sent")).formatted(Formatting.GREEN), false);
 			ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 			schedulers.add(scheduler);
@@ -159,6 +159,7 @@ public class TPAUtilities implements ModInitializer {
 							playerTPAMap.remove(target_uuid);
 						}
 						context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpa_expired")).formatted(Formatting.RED), false);
+						context.getSource().getPlayer().playSoundToPlayer(SoundEvents.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
 					}
 				}
 				schedulers.remove(scheduler);
@@ -345,11 +346,11 @@ public class TPAUtilities implements ModInitializer {
 		String player_language = StateSaverAndLoader.getPlayerState(context.getSource().getPlayer()).getLanguage();
 		if (lockedTPAPlayers.contains(player_uuid)){
 			lockedTPAPlayers.remove(player_uuid);
-			context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpalock_activated")).formatted(Formatting.GREEN), false);
+			context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpalock_deactivated")).formatted(Formatting.GREEN), false);
 		}
 		else{
 			lockedTPAPlayers.add(player_uuid);
-			context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpalock_deactivated")).formatted(Formatting.GREEN), false);
+			context.getSource().sendFeedback(() -> Text.literal(getTranslation(player_language,"tpalock_activated")).formatted(Formatting.GREEN), false);
 		}
 		return 1;
 	}
